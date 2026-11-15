@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>गया लोकल – सवारी, सामान और बिक्री</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.min.css">
+<meta name="theme-color" content="#14213d">
+<style>html,body{margin:0;padding:0;height:100%;overflow:hidden}</style>
+<style>
+:root{--ink:#14213d;--gold:#fca311;--paper:#fff;--mute:#5b6478;--line:#e3e6ee;--r:16px}
+#p2p{position:fixed;inset:0;z-index:99990;font-family:"Hind","Noto Sans Devanagari",system-ui,sans-serif;font-size:16px;color:var(--ink)}
+#p2p *{box-sizing:border-box}
+#p2p button,#p2p input,#p2p select{font-family:inherit}
+#p2p :focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+#p2p-map{position:absolute;inset:0}
+.p2p-pin{width:40px;height:40px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 3px 8px #0006;display:flex;align-items:center;justify-content:center}
+.p2p-pin span{transform:rotate(45deg);font-size:19px}
+.marker-cluster div{background:var(--ink)!important;color:var(--gold)!important;font-weight:700;border:2px solid var(--gold)}
+.marker-cluster{background:#14213d55!important}
+#p2p-top{position:absolute;top:calc(8px + env(safe-area-inset-top,0px));left:8px;right:8px;z-index:1000}
+#p2p-brand{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+#p2p-brand b{background:var(--ink);color:var(--gold);padding:8px 16px;border-radius:999px;box-shadow:0 2px 8px #0005;font-size:17px;display:flex;align-items:center;gap:8px}
+#p2p-count{font-size:12px;font-weight:500;color:#fff;background:#ffffff26;border-radius:999px;padding:2px 8px}
+.rb,#p2p-help{background:var(--paper);border:0;border-radius:50%;width:42px;height:42px;font-size:20px;box-shadow:0 2px 8px #0004;cursor:pointer}
+#p2p-legend{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:none}
+#p2p-legend::-webkit-scrollbar{display:none}
+#p2p-legend button{flex:none;background:var(--paper);color:var(--ink);border:2px solid;border-radius:999px;padding:7px 12px;font-size:14px;box-shadow:0 1px 5px #0003;cursor:pointer;transition:opacity .15s,transform .15s}
+#p2p-legend button.off{opacity:.4;background:#eceef3}
+#p2p-legend button:active{transform:scale(.95)}
+#p2p-bar{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:12px;right:12px;z-index:1000;display:flex;gap:10px;align-items:center;justify-content:center}
+#p2p-bar button{border:0;border-radius:999px;font-weight:700;box-shadow:0 6px 16px #0006;cursor:pointer;min-height:54px;transition:transform .12s}
+#p2p-bar button:active{transform:scale(.96)}
+#p2p-add{background:var(--gold);color:var(--ink);font-size:18px;padding:0 28px;flex:1;max-width:220px}
+#p2p-list-btn,#p2p-loc{background:var(--paper);color:var(--ink);font-size:16px;padding:0 18px}
+.leaflet-bottom.leaflet-right{margin-bottom:88px}
+.leaflet-popup-content-wrapper{border-radius:var(--r);padding:0;overflow:hidden}
+.leaflet-popup-content{margin:0}
+.p2p-sheet{display:flex;visibility:hidden;opacity:0;position:absolute;inset:0;z-index:2000;background:#0a0f1e88;align-items:flex-end;justify-content:center;transition:opacity .2s,visibility .2s}
+.p2p-sheet.on{visibility:visible;opacity:1}
+.p2p-box{background:var(--paper);width:100%;max-width:480px;max-height:92%;overflow:auto;border-radius:22px 22px 0 0;padding:22px 16px calc(16px + env(safe-area-inset-bottom,0px));position:relative;transform:translateY(24px);transition:transform .25s ease}
+.p2p-sheet.on .p2p-box{transform:none}
+.p2p-box::before{content:"";display:block;width:44px;height:5px;border-radius:9px;background:#cfd4e0;position:absolute;top:8px;left:50%;margin-left:-22px}
+.p2p-box h3{margin:0 0 12px;font-size:20px}
+#p2p-types{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tbtn{background:var(--paper);color:var(--ink);border:2px solid;border-radius:14px;padding:12px 6px;font-size:14px;line-height:1.3;cursor:pointer;transition:transform .12s,background .12s}
+.tbtn:active{transform:scale(.96)}
+.tbtn span{display:block;font-size:30px;margin-bottom:4px}
+#p2p-form input,#p2p-form select,#p2p-q{width:100%;padding:13px;margin:5px 0;border:1.5px solid var(--line);border-radius:12px;font-size:16px;background:#fff;color:var(--ink);min-height:50px}
+#p2p-form input:focus,#p2p-form select:focus,#p2p-q:focus{border-color:var(--gold);outline:0;box-shadow:0 0 0 3px #fca31144}
+#p2p-form input.bad{border-color:#dc2626}
+#p2p-form .row{display:flex;gap:8px}
+#p2p-form label.chk{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:15px}
+#p2p-form label.chk input{width:22px;height:22px;min-height:0;margin:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 6px}
+.chips button{border:1.5px solid var(--line);background:#f6f7fb;border-radius:999px;padding:6px 12px;font-size:14px;cursor:pointer}
+.p2p-go{background:var(--ink);color:var(--gold);border:0;border-radius:14px;padding:15px;width:100%;font-size:18px;font-weight:700;margin-top:8px;cursor:pointer}
+.p2p-go:disabled{opacity:.6}
+.p2p-x{background:none;border:0;width:100%;color:var(--mute);padding:12px;font-size:15px;cursor:pointer}
+#p2p-msg{font-size:14px;color:#b45309;margin:4px 0;min-height:4px}
+.lbar{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.lrow{padding:10px 12px;margin:8px 0;background:#f4f5f9;border-radius:12px;cursor:pointer;line-height:1.5}
+.lrow small{color:var(--mute)}
+.lrow .d{float:right;font-size:13px;font-weight:700;color:var(--ink);background:#fff;border-radius:999px;padding:1px 8px}
+.p2p-card{min-width:240px;font-size:15px;line-height:1.55;padding-bottom:12px}
+.p2p-card .hd{padding:10px 14px;color:#fff}
+.p2p-card .hd h4{margin:0;font-size:17px}
+.p2p-card .hd small{opacity:.9}
+.p2p-card .bd{padding:10px 14px 0}
+.p2p-card .btns{display:flex;gap:6px;margin-top:10px}
+.p2p-card .btns a,.p2p-card .btns button{flex:1;text-align:center;padding:12px 6px;border-radius:12px;color:#fff!important;text-decoration:none;font-weight:700;font-size:15px;border:0;cursor:pointer}
+.p2p-card .btns .p2p-share{flex:0 0 46px;background:#eef0f6;color:var(--ink)!important}
+.p2p-done{width:calc(100% - 28px);margin:8px 14px 0;padding:11px;border:0;border-radius:12px;background:var(--ink);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+#p2p-toast{position:absolute;left:50%;bottom:96px;transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;z-index:3000;opacity:0;pointer-events:none;transition:.25s;max-width:90%;text-align:center;font-size:15px}
+#p2p-toast.on{opacity:1;transform:translate(-50%,0)}
+.rb{font-size:14px;font-weight:700;color:var(--ink)}
+.pw{position:relative}.pw input{padding-right:52px!important}.pw.two input{padding-right:98px!important}
+.mic{position:absolute;right:6px;top:50%;margin-top:-19px;width:38px;height:38px;border:0;border-radius:50%;background:#fff3d6;font-size:17px;cursor:pointer}
+.mic.mp{right:48px}
+#p2p-rep{background:#fff3d6;color:var(--ink);border:1.5px solid var(--gold);border-radius:12px;padding:12px;width:100%;font-size:15px;font-weight:700;margin-bottom:10px;cursor:pointer}
+.sos a{display:flex;justify-content:space-between;align-items:center;padding:14px;margin:8px 0;background:#fee2e2;border-radius:12px;color:#991b1b;text-decoration:none;font-weight:700;font-size:17px}
+.fav{display:inline-block;margin:4px 6px 6px 0;padding:8px 12px;background:#fff3d6;border-radius:999px;text-decoration:none;color:var(--ink);font-size:14px}
+@media (prefers-reduced-motion:reduce){#p2p *{transition:none!important}}
+</style>
+<style>
+/* ===== UI/UX upgrade ===== */
+:root{--ink2:#1f2f56;--cream:#fff8e8;--sh:0 4px 14px rgba(20,33,61,.22)}
+body{background:#e9ecf3}
+.leaflet-tile-pane{filter:saturate(.82) brightness(1.02)}
+#p2p-top{left:10px;right:10px}
+#p2p-brand b{background:var(--ink);padding:9px 16px 9px 12px;font-size:18px;letter-spacing:.2px;box-shadow:var(--sh)}
+#p2p-count{background:var(--gold);color:var(--ink);font-weight:700;padding:2px 9px}
+.rb,#p2p-help{width:44px;height:44px;box-shadow:var(--sh);border:1px solid #fff}
+.rb:active,#p2p-help:active{transform:scale(.93)}
+#p2p-legend{padding:2px 2px 10px;mask-image:linear-gradient(90deg,#000 92%,transparent);-webkit-mask-image:linear-gradient(90deg,#000 92%,transparent)}
+#p2p-legend button{border-width:2px;padding:8px 13px;font-size:14.5px;font-weight:500;box-shadow:var(--sh);min-height:38px}
+#p2p-legend button.off{opacity:.55;text-decoration:line-through;filter:grayscale(1)}
+#p2p-bar{gap:10px;padding:0}
+#p2p-bar button{min-height:56px}
+#p2p-add{max-width:none;font-size:19px;background:linear-gradient(180deg,#ffb53a,var(--gold));box-shadow:0 8px 20px rgba(252,163,17,.55)}
+#p2p-list-btn,#p2p-loc{border:1px solid var(--line)}
+#p2p-loc{width:56px;padding:0;font-size:22px}
+.p2p-sheet{background:rgba(10,15,30,.55);backdrop-filter:blur(2px)}
+.p2p-box{padding-top:30px;box-shadow:0 -10px 40px rgba(0,0,0,.25)}
+.p2p-box h3{font-size:21px;padding-right:44px;line-height:1.3}
+.p2p-close{position:absolute;top:10px;right:10px;width:38px;height:38px;border:0;border-radius:50%;background:#eef0f6;color:var(--ink);font-size:16px;cursor:pointer;z-index:2}
+.p2p-close:active{transform:scale(.92)}
+#p2p-types{gap:12px}
+.tbtn{border-width:2px;border-radius:16px;padding:14px 8px;font-size:14.5px;font-weight:500;min-height:112px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+.tbtn span{font-size:34px;margin-bottom:6px}
+#p2p-form input,#p2p-form select{background:#fafbfd}
+#p2p-form input:focus,#p2p-form select:focus{background:#fff}
+#p2p-form select{appearance:auto}
+#p2p-form .p2p-go{position:sticky;bottom:calc(-1 * (16px + env(safe-area-inset-bottom,0px)));box-shadow:0 -8px 16px #fff}
+.p2p-go{min-height:54px;box-shadow:0 4px 12px rgba(20,33,61,.3)}
+#p2p-msg{font-weight:500}
+#p2p-msg:not(:empty){background:#fff3d6;border-radius:10px;padding:8px 12px}
+.chips button{min-height:38px}
+.chips button:active{background:var(--gold);border-color:var(--gold)}
+.lbar{position:sticky;top:-30px;background:#fff;padding:6px 0;z-index:1}
+#p2p-q{margin:0}
+.lrow{display:flex;gap:12px;align-items:flex-start;padding:12px;background:#fff;border:1px solid var(--line);border-left-width:1px!important;border-radius:14px;box-shadow:0 1px 4px rgba(20,33,61,.07);transition:background .12s}
+.lrow:active{background:#f4f5f9}
+.lrow .ic{flex:none;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px}
+.lrow .tx{flex:1;min-width:0}
+.lrow .tx b{display:block;font-size:16px}
+.lrow .tx small{display:block;line-height:1.5}
+.lrow .d{float:none;flex:none;align-self:flex-start;background:var(--cream);border:1px solid #f3d9a0}
+.lrow .pc{display:inline-block;margin-top:4px;background:var(--ink);color:var(--gold);border-radius:999px;padding:1px 10px;font-weight:700;font-size:14px}
+.empty{text-align:center;padding:26px 8px;color:var(--mute)}
+.empty .big{font-size:44px}
+.empty button{margin-top:10px;background:var(--gold);color:var(--ink);border:0;border-radius:999px;padding:12px 22px;font-weight:700;font-size:16px;cursor:pointer}
+.p2p-card{min-width:250px}
+.p2p-card .hd{padding:12px 14px}
+.p2p-card .hd h4{font-size:18px}
+.p2p-card .pr{display:inline-block;margin:10px 0 2px;background:var(--ink);color:var(--gold);border-radius:999px;padding:3px 14px;font-size:17px;font-weight:700}
+.p2p-card .ir{display:flex;gap:8px;margin-top:6px;line-height:1.45}
+.p2p-card .ir i{font-style:normal;flex:none;width:22px;text-align:center}
+.p2p-card .ok{color:#166534;font-weight:700}
+.p2p-card .btns{gap:8px}
+.p2p-card .btns a,.p2p-card .btns button{padding:13px 6px;min-height:48px}
+.p2p-card .btns .p2p-share{flex:0 0 48px}
+.leaflet-container a.leaflet-popup-close-button{width:34px;height:34px;font-size:22px;line-height:34px;color:#fff}
+.leaflet-popup-content-wrapper{box-shadow:0 8px 28px rgba(0,0,0,.3)}
+#p2p-toast{bottom:calc(96px + env(safe-area-inset-bottom,0px));box-shadow:var(--sh);font-weight:500}
+.demo{background:#fef3c7;color:#92400e;padding:7px 12px;border-radius:12px;font-size:13px;margin:0 0 8px;box-shadow:var(--sh)}
+.sos a{border:1px solid #fecaca;min-height:54px}
+.sos a:active{background:#fecaca}
+#p2p-plans{display:grid;gap:10px;margin:10px 0}
+.plan{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;background:#fff;border:2px solid var(--line);border-radius:16px;padding:14px;cursor:pointer;min-height:68px;font-size:16px;color:var(--ink)}
+.plan:active{transform:scale(.98)}
+.plan.best{border-color:var(--gold);background:var(--cream)}
+.plan b{font-size:17px}.plan small{display:block;color:var(--mute);font-weight:400}
+.plan .rs{font-size:22px;font-weight:700;white-space:nowrap}
+.mst{background:#dcfce7;color:#166534;border-radius:12px;padding:10px 12px;font-weight:700;margin:6px 0}
+.pl-n{font-size:13px;color:var(--mute);line-height:1.5}
+#pl-login input{width:100%;padding:13px;margin:5px 0;border:1.5px solid var(--line);border-radius:12px;font-size:16px;min-height:50px}
+.p2p-card .p2p-lock{flex:1}
+#p2p-pickbar{position:absolute;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:1500;display:flex;gap:10px;align-items:center;justify-content:space-between;background:var(--ink);color:#fff;border-radius:999px;padding:8px 8px 8px 18px;box-shadow:var(--sh);font-weight:500}
+#p2p-pickbar button{border:0;border-radius:999px;background:var(--gold);color:var(--ink);font-weight:700;font-size:15px;padding:12px 18px;min-height:44px;cursor:pointer}
+.mic.mp.hl{background:var(--gold);box-shadow:0 0 0 4px #fca31155}
+@media (min-width:700px){.p2p-sheet{align-items:center}.p2p-box{border-radius:22px;max-height:88%}#p2p-bar{max-width:520px;left:50%;transform:translateX(-50%);right:auto;width:calc(100% - 24px)}}
+</style>
+</head>
+<body>
+<div id="p2p">
+  <div id="p2p-map"></div>
+  <div id="p2p-rc"></div>
+  <div id="p2p-top">
+    <div id="p2p-brand"><b>🗺️ गया लोकल <span id="p2p-count"></span></b><div style="display:flex;gap:6px"><button id="p2p-inb" class="rb" type="button" aria-label="मेरे अनुरोध">🤝<small id="p2p-inb-n"></small></button><button id="p2p-mem" class="rb" type="button" aria-label="मेंबरशिप">🔓</button><button id="p2p-lang" class="rb" type="button" aria-label="भाषा / Language">EN</button><button id="p2p-sos" class="rb" type="button" aria-label="आपातकाल">🆘</button><button id="p2p-help" type="button" aria-label="मदद">❓</button></div></div>
+    <div id="p2p-legend"></div>
+  </div>
+  <div id="p2p-bar">
+    <button id="p2p-list-btn" type="button">📋 सूची</button>
+    <button id="p2p-add" type="button">➕ पोस्ट करें</button>
+    <button id="p2p-loc" type="button" aria-label="मेरी लोकेशन">📍</button>
+  </div>
+
+  <div id="p2p-toast" role="status"></div>
+  <div class="p2p-sheet" id="p2p-s-list"><div class="p2p-box"><h3>📋 आसपास की पोस्ट</h3><div class="lbar"><input id="p2p-q" type="search" placeholder="🔍 खोजें: जगह, नाम, सामान…"><button type="button" id="p2p-vf" class="fav" style="border:0;cursor:pointer;white-space:nowrap;margin:0">✅ वेरिफ़ाइड</button></div><div id="p2p-favs"></div><div id="p2p-listbox"></div><button class="p2p-x" type="button" data-close>बंद करें</button></div></div>
+
+  <div class="p2p-sheet" id="p2p-s-inbox"><div class="p2p-box"><h3>🤝 मेरे अनुरोध</h3><div id="p2p-inbox"></div><button class="p2p-x" type="button" id="p2p-inb-x">बंद करें</button></div></div>
+  <div class="p2p-sheet" id="p2p-s-sos"><div class="p2p-box"><h3>🆘 आपातकालीन नंबर</h3><div class="sos" id="p2p-sosl"></div><button class="p2p-x" type="button" data-close>बंद करें</button></div></div>
+
+  <div class="p2p-sheet" id="p2p-s-plan"><div class="p2p-box">
+    <h3>🔓 मेंबर बनें, नंबर देखें</h3>
+    <p style="margin:0 0 6px">नक्शा और सारी पोस्ट सबके लिए खुली हैं। मेंबर को <b>कॉल</b> और <b>WhatsApp</b> मिलता है।</p>
+    <div id="p2p-mst"></div>
+    <div id="pl-login" style="display:none"><p>पहले अपना मोबाइल नंबर वेरिफ़ाई करें:</p><input id="pl-ph" inputmode="numeric" maxlength="10" placeholder="मोबाइल नंबर (10 अंक)"><input id="pl-otp" inputmode="numeric" maxlength="6" placeholder="SMS में आया OTP" style="display:none"><button class="p2p-go" id="pl-go" type="button">OTP भेजें</button></div>
+    <div id="p2p-plans"></div>
+    <p class="pl-n">भुगतान UPI/कार्ड से, एक बार का (अपने-आप नहीं कटेगा)। यह सिर्फ़ जानकारी का मंच है, सवारी/काम की ज़िम्मेदारी आपस में तय करें।</p>
+    <button class="p2p-x" type="button" data-close>बंद करें</button>
+  </div></div>
+
+  <div class="p2p-sheet" id="p2p-s-help"><div class="p2p-box">
+    <h3>कैसे इस्तेमाल करें?</h3>
+    <p>1️⃣ नक्शे पर रंगीन पिन दबाएँ → <b>कॉल</b> या <b>WhatsApp</b> करें।</p>
+    <p>2️⃣ अपनी सेवा डालनी है? <b>➕ पोस्ट करें</b> दबाएँ और नीचे से चुनें।</p>
+    <p>🔒 नंबर देखने (कॉल/WhatsApp) के लिए <b>मेंबर</b> बनें – 1 दिन या 1 महीना।</p>
+    <p>3️⃣ काम हो जाए तो अपनी पोस्ट पर <b>"काम हो गया"</b> दबाकर हटा दें।</p>
+    <p style="font-size:13px;color:#666">यह सिर्फ़ जानकारी का मंच है। किराया और सवारी/सामान की ज़िम्मेदारी आपस में तय करें। अनजान को कीमती सामान न दें।</p>
+    <button class="p2p-go" type="button" data-close>ठीक है, समझ गया</button>
+  </div></div>
+
+  <div class="p2p-sheet" id="p2p-s-add"><div class="p2p-box">
+    <div id="p2p-types-wrap"><h3>आप क्या करना चाहते हैं? 👇</h3><button id="p2p-rep" type="button" hidden></button><div id="p2p-types"></div><button class="p2p-x" type="button" data-close>रद्द करें</button></div>
+    <form id="p2p-form" autocomplete="off" style="display:none">
+      <h3 id="p2p-ttl"></h3>
+      <input name="name" placeholder="आपका नाम" required maxlength="80">
+      <input name="phone" placeholder="मोबाइल नंबर (10 अंक)" inputmode="numeric" required maxlength="10">
+      <input name="address" list="p2p-places" placeholder="कहाँ से? (मोहल्ला / जगह)" required maxlength="255">
+      <input name="pincode" placeholder="पिन कोड (जैसे 823001)" inputmode="numeric" required maxlength="6" pattern="\d{6}">
+      <div data-t="trip need auto taxi tempo tour" style="display:none"><input name="to_address" list="p2p-places" placeholder="कहाँ तक जाना है?" maxlength="255"></div>
+      <div data-t="trip" style="display:none"><select name="vehicle"><option value="">कौन सी गाड़ी?</option><option>बाइक</option><option>स्कूटर</option><option>कार</option><option>ऑटो</option><option>साइकिल</option><option>पैदल</option></select></div>
+      <div data-t="trip auto taxi tour" style="display:none"><select name="seats"><option value="0">कितनी सीट खाली? (नहीं बताना)</option><option value="1">1 सीट खाली</option><option value="2">2 सीट खाली</option><option value="3">3 सीट खाली</option><option value="4">4 सीट खाली</option><option value="5">5 सीट खाली</option><option value="6">6 सीट खाली</option></select></div>
+      <input name="details" maxlength="160" placeholder="कुछ और बताना हो (वैकल्पिक)">
+      <div data-t="trip need auto taxi tempo cycle tour wseek wgive" style="display:none">
+        <div class="row"><select name="tday"><option value="now">अभी</option><option value="today">आज</option><option value="tomorrow">कल</option></select><input name="ttime" type="time" style="display:none"></div>
+        <label class="chk" data-t="trip auto taxi tour" style="display:none"><input type="checkbox" name="daily" value="1"> 🔁 रोज़ इसी समय (बार-बार पोस्ट नहीं करनी पड़ेगी)</label>
+      </div>
+      <input name="price" placeholder="किराया / कीमत (जैसे ₹50 या ₹15/km)" required maxlength="80">
+      <input name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px">
+      <input name="otp" id="p2p-otp" placeholder="SMS में आया 6 अंक का OTP" inputmode="numeric" autocomplete="one-time-code" maxlength="6" style="display:none">
+      <button class="p2p-x" id="p2p-resend" type="button" style="display:none">OTP दोबारा भेजें</button>
+      <div class="chips" data-t="trip need auto taxi tempo cycle sale tour wseek wgive" id="p2p-pchips"><button type="button">₹50</button><button type="button">₹100</button><button type="button">₹15/km</button><button type="button">आपसी बात से</button></div>
+      <div id="p2p-msg"></div>
+      <button class="p2p-go" id="p2p-go" type="submit">पोस्ट करें</button>
+      <button class="p2p-x" type="button" id="p2p-back">← वापस</button>
+    </form>
+    <datalist id="p2p-places"><option value="Gaya Junction"><option value="Vishnupad Mandir"><option value="Mahabodhi Temple, Bodh Gaya"><option value="Manpur"><option value="Civil Lines"><option value="Station Road"><option value="Delhi Darwaza"><option value="Ramna Road"><option value="Magadh University, Bodh Gaya"><option value="Gaya Airport, Bodh Gaya"></datalist>
+  </div></div>
+</div>
+
+<!--
+=====================  SETUP: FIREBASE (FREE) – सबको एक ही डेटा दिखाने के लिए  =====================
+1. console.firebase.google.com -> Add project -> Build -> Firestore Database -> Create (test/production)
+2. Project settings -> Your apps -> Web (</>) -> "firebaseConfig" copy karke neeche paste karein.
+3. Firestore -> Rules me README wale rules daal kar Publish karein.
+Config khali chhodne par app DEMO MODE me chalega (data sirf usi phone me).
+-->
+<script>
+window.FIREBASE_CONFIG = {
+  apiKey: "PASTE_HERE",
+  authDomain: "PASTE_HERE",
+  projectId: "PASTE_HERE",
+  storageBucket: "PASTE_HERE",
+  messagingSenderId: "PASTE_HERE",
+  appId: "PASTE_HERE"
+};
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<script>
+window.P2P={"types": {"trip": ["मैं जा रहा हूँ (सामान / सवारी ले जा सकता हूँ)", "🏍️", "#22c55e", "जा रहा हूँ"], "need": ["सामान भेजना है / सवारी चाहिए", "📦", "#06b6d4", "सामान/सवारी चाहिए"], "auto": ["ऑटो बुकिंग", "🛺", "#eab308", "ऑटो"], "taxi": ["टैक्सी / कार बुकिंग", "🚗", "#3b82f6", "टैक्सी/कार"], "tempo": ["टेम्पो / सामान ढुलाई", "🛻", "#f97316", "टेम्पो"], "cycle": ["साइकिल से छोटा काम (₹5-10)", "🚲", "#a855f7", "साइकिल काम"], "sale": ["मुझे कुछ बेचना है", "💰", "#ef4444", "बेचना है"], "tour": ["यात्री / तीर्थ घुमाना (बोधगया, विष्णुपद)", "🛕", "#ec4899", "यात्री/घूमना"]}, "otp": true, "center": [24.7914, 85.0002], "bounds": [24.66, 84.9, 24.86, 85.12], "api": "", "pay": {"orderUrl": ""}};
+P2P.types.wseek=["मुझे काम चाहिए (मज़दूर / मिस्त्री / हुनर)","🙋","#14b8a6","काम चाहिए"];
+P2P.types.wgive=["मुझे काम देना है (आदमी चाहिए)","🏗️","#6366f1","काम देना है"];
+(function(){
+const T=P2P.types,$=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+const post=async(path,b)=>{
+  if(!useFB){if(path==='/otp/send'){window._dOtp=String(100000+Math.floor(Math.random()*900000));return{demo_otp:window._dOtp};}
+    if(b.otp!==window._dOtp)throw new Error('OTP सही नहीं है');return{token:'demo',uid:'demo'};}
+  const a=firebase.auth();a.languageCode='hi';
+  if(path==='/otp/send'){
+    try{if(!window._rc)window._rc=new firebase.auth.RecaptchaVerifier('p2p-rc',{size:'invisible'});window._conf=await a.signInWithPhoneNumber('+91'+b.phone,window._rc);}
+    catch(e){try{window._rc.clear();}catch(x){}window._rc=null;throw new Error(e.code==='auth/too-many-requests'?'बहुत कोशिशें हुईं, थोड़ी देर बाद करें':'OTP नहीं भेज पाए, नंबर जाँचें');}
+    return{};}
+  try{const r=await window._conf.confirm(b.otp);return{token:r.user.uid,uid:r.user.uid};}catch(e){throw new Error('OTP सही नहीं है');}
+};
+const toast=m=>{const t=$('#p2p-toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('on'),3200);};
+const ago=t=>{const m=Math.floor((Date.now()-(+t||0))/6e4);return m<1?'अभी-अभी':m<60?m+' मिनट पहले':m<1440?Math.floor(m/60)+' घंटे पहले':Math.floor(m/1440)+' दिन पहले';};
+const PLANS=[{id:'day',t:'1 दिन',p:29,d:1,s:'आज के लिए'},{id:'month',t:'1 महीना',p:199,d:30,s:'सबसे सस्ता – लगभग ₹7 रोज़',best:1}];
+const maskPh=ph=>{ph=String(ph||'');return ph.length===10?ph.slice(0,2)+'XXXXXX'+ph.slice(-2):'XXXXXXXXXX';};
+const MB={get(){return store.get('p2p_member',null);},ok(){const m=this.get();return !!(m&&m.exp>Date.now());},
+  left(){const m=this.get();if(!m)return'';const ms=m.exp-Date.now();return ms>=864e5?Math.ceil(ms/864e5)+' दिन':Math.max(1,Math.ceil(ms/36e5))+' घंटे';}};
+let meLL=null,lang=store.get('p2p_lang','hi');
+
+const map=L.map('p2p-map',{zoomControl:false}).setView(P2P.center,13);
+L.control.zoom({position:'bottomright'}).addTo(map);
+const B=L.latLngBounds([P2P.bounds[0],P2P.bounds[1]],[P2P.bounds[2],P2P.bounds[3]]);
+map.setMaxBounds(B.pad(0.15));map.setMinZoom(11);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+const goMe=(warn)=>{if(!navigator.geolocation)return;navigator.geolocation.getCurrentPosition(p=>{const ll=L.latLng(p.coords.latitude,p.coords.longitude);if(B.contains(ll)){meLL=ll;map.setView(ll,15);if(window.renderList)renderList();}else if(warn)toast('आप गया शहर के बाहर हैं');},()=>{if(warn)toast('लोकेशन की अनुमति दें – फ़ोन सेटिंग में चालू करें');});};
+goMe(false);$('#p2p-loc').onclick=()=>goMe(true);
+
+/* sheets */
+const show=id=>{$('#p2p-s-'+id).classList.add('on');if(id==='plan'&&window.renderPlan)window.renderPlan();},hide=id=>$('#p2p-s-'+id).classList.remove('on');
+document.querySelectorAll('.p2p-sheet').forEach(el=>{el.onclick=e=>{if(e.target===el||e.target.hasAttribute('data-close'))el.classList.remove('on');};});
+document.querySelectorAll('.p2p-box').forEach(b=>{const x=document.createElement('button');x.type='button';x.className='p2p-close';x.setAttribute('aria-label','बंद करें');x.setAttribute('data-close','');x.textContent='✕';b.prepend(x);});
+document.querySelectorAll('.p2p-sheet').forEach(el=>{el.setAttribute('role','dialog');el.setAttribute('aria-modal','true');});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.p2p-sheet.on').forEach(s=>s.classList.remove('on'));});
+$('#p2p-help').onclick=()=>show('help');
+if(!store.get('p2p_seen',0)){show('help');store.set('p2p_seen',1);}
+
+/* legend + type picker */
+const layers={},hidden={},markers={},legB={};let data=[];
+Object.entries(T).forEach(([k,v])=>{
+  layers[k]=L.markerClusterGroup({showCoverageOnHover:false,maxClusterRadius:45}).addTo(map);
+  const b=document.createElement('button');b.type='button';b.style.borderColor=v[2];b.textContent=v[1]+' '+v[3];b.dataset.l=v[1]+' '+v[3];legB[k]=b;
+  b.onclick=()=>{hidden[k]=!hidden[k];b.classList.toggle('off',hidden[k]);hidden[k]?map.removeLayer(layers[k]):map.addLayer(layers[k]);};
+  $('#p2p-legend').appendChild(b);
+  $('#p2p-types').insertAdjacentHTML('beforeend','<button type="button" class="tbtn" data-k="'+k+'" style="border-color:'+v[2]+';background:'+v[2]+'14"><span>'+v[1]+'</span>'+esc(v[0])+'</button>');
+});
+
+const heat=L.layerGroup();let hOn=false;
+{const b=document.createElement('button');b.type='button';b.style.borderColor='#ef4444';b.textContent='🔥 माँग';b.onclick=()=>{hOn=!hOn;hOn?heat.addTo(map):map.removeLayer(heat);b.style.background=hOn?'#fee2e2':'';if(hOn)toast('लाल गोले = जहाँ लोग सवारी/सामान ढूँढ रहे हैं');};$('#p2p-legend').prepend(b);window.heatB=b;}
+/* popup card */
+const CN={},inc=[],out=[];
+function contactBtns(p,mine){
+  const call='<button type="button" data-a="call" style="background:#2563eb">📞 कॉल</button><button type="button" data-a="wa" style="background:#25d366">💬 WhatsApp</button>',
+    dis=t=>'<button type="button" disabled style="background:#9aa3b5">'+t+'</button>';
+  if(!useFB)return MB.ok()?call:'<button type="button" class="p2p-lock" style="background:var(--ink)">🔒 नंबर देखें – मेंबर बनें</button>';
+  const u=firebase.auth().currentUser;if(mine||(u&&p.uid===u.uid))return dis('आपकी अपनी पोस्ट');
+  const st=CN[p.id];
+  return st==='accepted'?call:st==='pending'?dis('⏳ अनुरोध भेजा – जवाब का इंतज़ार'):st==='declined'?dis('❌ अनुरोध मंज़ूर नहीं हुआ'):'<button type="button" class="p2p-req" style="background:var(--ink)">🤝 संपर्क माँगें</button>';}
+function card(p){const t=T[p.type],mine=store.get('p2p_mine',{})[p.id];
+  return '<div class="p2p-card"><div class="hd" style="background:'+t[2]+'"><h4>'+t[1]+' '+esc(p.name)+(+p.verified||+p.pv?' ✅':'')+'</h4><small>'+esc(t[0])+(p.vehicle?' · '+esc(p.vehicle):'')+' · '+ago(p.createdAt)+'</small></div><div class="bd">'+
+  '<div class="pr">💵 '+esc(p.price)+'</div>'+
+  '<div class="ir"><i>📍</i><span>'+esc(p.address)+' – '+esc(p.pincode)+'</span></div>'+(p.to_address?'<div class="ir"><i>➡️</i><span>'+esc(p.to_address)+'</span></div>':'')+
+  '<div class="ir"><i>🕒</i><span>'+esc(p.time_text)+(+p.daily?' 🔁':'')+'</span></div>'+(+p.seats>0?'<div class="ir"><i>💺</i><span>'+(+p.seats)+' सीट खाली</span></div>':'')+(p.details?'<div class="ir"><i>📝</i><span>'+esc(p.details)+'</span></div>':'')+(+p.pv?'<div class="ir ok"><i>📱</i><span>नंबर OTP से सत्यापित</span></div>':'')+'</div>'+
+  (useFB?'':'<div class="ir" style="padding:0 14px"><i>📱</i><span>'+esc(p.pm||maskPh(p.phone))+(MB.ok()?'':' <small style="color:#888">(नंबर छिपा है)</small>')+'</span></div>')+
+  '<div class="btns" style="padding:0 14px">'+contactBtns(p,mine)+'<button type="button" class="p2p-share" aria-label="शेयर करें">🔗</button><button type="button" class="p2p-share p2p-fav" aria-label="पसंदीदा">'+(store.get('p2p_favu',{})[p.uid||p.phone]?'⭐':'☆')+'</button></div>'+
+  (mine?'<button type="button" class="p2p-done" data-id="'+p.id+'">✅ काम हो गया – पोस्ट हटाएँ</button>':'')+
+  '<div style="text-align:right;margin:6px 14px 0"><a href="#" class="p2p-rep" data-id="'+p.id+'" style="color:#999;font-size:12px">🚩 गलत है? रिपोर्ट करें</a></div></div>';}
+
+const route=L.layerGroup().addTo(map);
+map.on('popupopen',e=>{
+  route.clearLayers();
+  const p=e.popup._source&&e.popup._source._p,el=e.popup.getElement();
+  if(p&&p.to_lat&&p.to_lng){const a=[+p.lat,+p.lng],b=[+p.to_lat,+p.to_lng],c=T[p.type][2];
+    L.polyline([a,b],{color:c,weight:4,dashArray:'8 8'}).addTo(route);
+    L.circleMarker(b,{radius:9,color:'#fff',weight:3,fillColor:c,fillOpacity:1}).bindTooltip('मंज़िल',{permanent:true,direction:'top'}).addTo(route);}
+  const sh=el.querySelector('.p2p-share');
+  if(sh&&p)sh.onclick=async()=>{const tx='गया लोकल: '+T[p.type][0]+' – '+p.address+(p.to_address?' ➡️ '+p.to_address:'')+' · '+p.price+' · '+location.href;
+    try{if(navigator.share)await navigator.share({text:tx});else{await navigator.clipboard.writeText(tx);toast('लिंक कॉपी हो गया');}}catch(e){}};
+  const rq=el.querySelector('.p2p-req');if(rq)rq.onclick=async()=>{if(!firebase.auth().currentUser){toast('पहले नंबर वेरिफ़ाई करें');show('plan');return;}
+    try{await DB.req(p);toast('✅ अनुरोध भेज दिया – मंज़ूरी पर नंबर खुलेगा');map.closePopup();}catch(x){toast('अनुरोध नहीं जा पाया, फिर कोशिश करें');}};
+  const lk=el.querySelector('.p2p-lock');if(lk)lk.onclick=()=>show('plan');
+  el.querySelectorAll('[data-a]').forEach(bt=>bt.onclick=async()=>{if(!useFB&&!MB.ok()){show('plan');return;}
+    try{const ph=await getPh(p);if(bt.dataset.a==='call')location.href='tel:+91'+ph;else window.open('https://wa.me/91'+ph+'?text='+encodeURIComponent('नमस्ते, मैंने गया लोकल पर आपकी पोस्ट देखी ('+T[p.type][0]+')'),'_blank','noopener');}
+    catch(x){toast('नंबर नहीं मिला, फिर कोशिश करें');}});
+  const fv=el.querySelector('.p2p-fav');
+  if(fv&&p)fv.onclick=async()=>{if(!MB.ok()){show('plan');return;}const k=p.uid||p.phone,fu=store.get('p2p_favu',{}),m=store.get('p2p_fav',{});
+    try{if(fu[k]){delete m[fu[k]];delete fu[k];fv.textContent='☆';}else{const ph=await getPh(p);m[ph]=p.name;fu[k]=ph;fv.textContent='⭐';toast('पसंदीदा में जुड़ा');}
+      store.set('p2p_fav',m);store.set('p2p_favu',fu);renderList();}catch(x){toast('नंबर नहीं मिला');}};
+  const rep=el.querySelector('.p2p-rep');
+  if(rep)rep.onclick=async ev=>{ev.preventDefault();
+    try{await DB.report(rep.dataset.id);rep.textContent='✅ रिपोर्ट हो गई';}
+    catch(x){if(x.message==='login'){toast('रिपोर्ट के लिए पहले नंबर वेरिफ़ाई करें');show('plan');}else toast('रिपोर्ट नहीं हो पाई, फिर कोशिश करें');}};
+  const dn=el.querySelector('.p2p-done');
+  if(dn)dn.onclick=async()=>{if(!confirm('यह पोस्ट हटा दें?'))return;const mine=store.get('p2p_mine',{});
+    try{await DB.close(dn.dataset.id);delete mine[dn.dataset.id];store.set('p2p_mine',mine);map.closePopup();load();}catch(err){toast(err.message);}};
+});
+map.on('popupclose',()=>route.clearLayers());
+
+let onlyV=false;
+function renderList(){
+  const fm=store.get('p2p_fav',{});$('#p2p-favs').innerHTML=Object.keys(fm).length&&MB.ok()?'<b>⭐ पसंदीदा</b><br>'+Object.entries(fm).map(([ph,n])=>'<a class="fav" href="tel:+91'+esc(ph)+'">📞 '+esc(n)+(data.some(p=>p.phone===ph)?' 🟢':'')+'</a>').join(''):'';
+  const q=($('#p2p-q').value||'').trim().toLowerCase();
+  let a=data.filter(p=>T[p.type]&&(!onlyV||+p.verified||+p.pv)&&(!q||[p.name,p.address,p.to_address,p.details,T[p.type][0],T[p.type][3]].join(' ').toLowerCase().includes(q)));
+  const dist=p=>meLL?meLL.distanceTo([+p.lat,+p.lng]):0;
+  if(meLL)a.sort((x,y)=>dist(x)-dist(y));
+  $('#p2p-listbox').innerHTML=a.length?a.map(p=>{const t=T[p.type],d=dist(p);
+    return '<div class="lrow" data-id="'+p.id+'"><div class="ic" style="background:'+t[2]+'22;border:2px solid '+t[2]+'">'+t[1]+'</div><div class="tx"><b>'+esc(p.name)+(+p.verified||+p.pv?' ✅':'')+'</b><small>'+esc(t[3])+' · '+ago(p.createdAt)+'</small><small>📍 '+esc(p.address)+(p.to_address?' ➡️ '+esc(p.to_address):'')+'</small><small>🕒 '+esc(p.time_text)+'</small><span class="pc">'+esc(p.price)+'</span></div>'+(meLL?'<span class="d">'+(d<1000?Math.round(d/10)*10+' m':(d/1000).toFixed(1)+' km')+'</span>':'')+'</div>';}).join(''):(q?'<div class="empty"><div class="big">🔍</div>कोई पोस्ट नहीं मिली।<br>दूसरा शब्द आज़माएँ।</div>':'<div class="empty"><div class="big">🗺️</div>अभी कोई पोस्ट नहीं है।<br><button type="button" data-post>➕ पहली पोस्ट आप करें</button></div>');
+}
+window.renderList=renderList;
+function render(){
+  const live=new Set(data.filter(p=>T[p.type]).map(p=>p.id));
+  Object.keys(markers).forEach(id=>{if(!live.has(id)){const m=markers[id];layers[m._p.type].removeLayer(m);delete markers[id];}});
+  data.forEach(p=>{const t=T[p.type];if(!t)return;
+    const old=markers[p.id];if(old){old._p=p;if(!(old.isPopupOpen&&old.isPopupOpen()))old.setPopupContent(card(p));return;} /* मौजूद मार्कर वैसे ही रहे – खुला popup बंद न हो */
+    const icon=L.divIcon({className:'',iconSize:[40,40],iconAnchor:[20,40],popupAnchor:[0,-36],html:'<div class="p2p-pin" style="background:'+t[2]+'"><span>'+t[1]+'</span></div>'});
+    const mk=L.marker([+p.lat,+p.lng],{icon}).bindPopup(card(p),{maxWidth:300});mk._p=p;mk.addTo(layers[p.type]);markers[p.id]=mk;});
+  heat.clearLayers();const g={};data.filter(p=>p.type==='need').forEach(p=>{const k=Math.round(p.lat/.004)+','+Math.round(p.lng/.004),c=g[k]||(g[k]={n:0,a:0,o:0});c.n++;c.a+=+p.lat;c.o+=+p.lng;});
+  Object.values(g).forEach(c=>L.circle([c.a/c.n,c.o/c.n],{radius:220+c.n*70,stroke:false,fillColor:'#ef4444',fillOpacity:Math.min(.55,.15+c.n*.12),interactive:false}).addTo(heat));
+  const cnt={};data.forEach(p=>cnt[p.type]=(cnt[p.type]||0)+1);
+  Object.keys(legB).forEach(k=>legB[k].textContent=legB[k].dataset.l+(cnt[k]?' '+cnt[k]:''));
+  $('#p2p-count').textContent=data.length?data.length+' सक्रिय':'';
+  renderList();
+}
+/* ---------- Data layer: Firebase (shared, live) or demo mode (this phone only) ---------- */
+const inB=(a,b)=>a>=P2P.bounds[0]&&a<=P2P.bounds[2]&&b>=P2P.bounds[1]&&b<=P2P.bounds[3];
+const useFB=typeof firebase!=='undefined'&&window.FIREBASE_CONFIG&&window.FIREBASE_CONFIG.apiKey&&window.FIREBASE_CONFIG.apiKey!=='PASTE_HERE';
+let fs=null;
+if(useFB){firebase.initializeApp(window.FIREBASE_CONFIG);fs=firebase.firestore();}
+else{const w=document.createElement('div');w.className='demo';w.textContent='⚠️ डेमो मोड: पोस्ट सिर्फ़ इसी फ़ोन में दिखेंगी';$('#p2p-brand').after(w);}
+/* पोस्ट कब तक दिखेगी: expiresAt (नई पोस्ट) – पुरानी पोस्ट के लिए पुराना नियम */
+const fresh=p=>{if(p.done||(+p.reports||0)>=3)return false;const now=Date.now();
+  if(+p.expiresAt)return +p.expiresAt>now;
+  const age=now-(+p.createdAt||0);return age<48*36e5||(+p.daily&&age<30*864e5);};
+/* रोज़ वाली: 30 दिन · बिक्री: 7 दिन · "अभी": गाड़ी/सामान 4 घंटे, काम 24 घंटे · तय समय: समय के बाद 2 घंटे (काम: 6 घंटे) */
+const calcExpiry=(type,daily,sched,now)=>{const H=36e5,job=type==='wseek'||type==='wgive';
+  if(+daily)return now+30*864e5;
+  if(type==='sale')return now+7*864e5;
+  if(sched)return sched+(job?6:2)*H;
+  return now+(job?24:4)*H;};
+const DB={
+  listen(cb){
+    if(fs){fs.collection('posts').where('done','==',false).where('expiresAt','>',Date.now()).orderBy('expiresAt').limit(500).onSnapshot(s=>cb(s.docs.map(x=>({id:x.id,...x.data()}))),e=>console.error(e));}
+    else{this.cb=cb;this.refresh();window.addEventListener('storage',()=>this.refresh());}
+  },
+  refresh(){if(!fs&&this.cb)this.cb(store.get('p2p_demo',[]));},
+  async add(d){
+    if(d.website)return{id:'x',key:''};
+    const phone=String(d.phone||'').replace(/\D/g,'').slice(-10),pin=String(d.pincode||'').replace(/\D/g,'');
+    if(!/^[6-9]\d{9}$/.test(phone))throw new Error('सही 10 अंक का मोबाइल नंबर डालें');
+    if(pin.length!==6||!(pin.startsWith('823')||pin==='824231'))throw new Error('गया का पिन कोड डालें (जैसे 823001)');
+    if(!inB(+d.lat,+d.lng))throw new Error('अभी सिर्फ़ गया शहर में सेवा चालू है');
+    if(['sale','need','cycle','wseek','wgive'].includes(d.type)&&!String(d.details||'').trim())throw new Error('बताएँ कि क्या सामान / क्या काम है');
+    const hr=store.get('p2p_rl',[]).filter(t=>Date.now()-t<36e5);
+    if(hr.length>=10)throw new Error('बहुत ज़्यादा पोस्ट, 1 घंटे बाद कोशिश करें');
+    hr.push(Date.now());store.set('p2p_rl',hr);
+    const tl=(d.to_lat===''||d.to_lat==null)?null:+d.to_lat,tg=(d.to_lng===''||d.to_lng==null)?null:+d.to_lng,ok=tl!=null&&tg!=null&&inB(tl,tg);
+    const now=Date.now();let sched=+d.sched||0;if(sched&&(sched<now-36e5||sched>now+3*864e5))sched=0;
+    const doc={name:String(d.name).slice(0,80),phone,pm:maskPh(phone),type:d.type,address:String(d.address).slice(0,255),pincode:pin,time_text:String(d.time).slice(0,80),price:String(d.price).slice(0,80),
+      lat:+d.lat,lng:+d.lng,to_address:String(d.to_address||'').slice(0,255)||null,to_lat:ok?tl:null,to_lng:ok?tg:null,vehicle:String(d.vehicle||'').slice(0,20),details:String(d.details||'').slice(0,160),
+      seats:Math.min(9,Math.max(0,+d.seats||0)),daily:d.daily?1:0,verified:0,pv:+d.pv||0,uid:d.uid||null,reports:0,done:false,createdAt:now,scheduledAt:sched||null,expiresAt:calcExpiry(d.type,d.daily,sched,now)};
+    const key=Math.random().toString(36).slice(2)+Date.now().toString(36);
+    if(fs){const ph=doc.phone,priv={phone:ph,uid:doc.uid,name:String(d.name).slice(0,80),address:doc.address,to_address:doc.to_address,lat:doc.lat,lng:doc.lng,to_lat:doc.to_lat,to_lng:doc.to_lng};
+      const g=v=>v==null?null:+(Math.round(v/0.002)*0.002).toFixed(3); /* ~200 मीटर धुंधला */
+      delete doc.phone;delete doc.pm;doc.name=doc.name.trim().split(/\s+/)[0];doc.address='गया';doc.lat=g(doc.lat);doc.lng=g(doc.lng);
+      if(doc.to_lat!=null){doc.to_lat=g(doc.to_lat);doc.to_lng=g(doc.to_lng);}doc.to_address=doc.to_address?'तय है':null;
+      const r=await fs.collection('posts').add(doc);await fs.collection('contacts').doc(r.id).set(priv);return{id:r.id,key};}
+    const a=store.get('p2p_demo',[]);doc.id='d'+Date.now();a.unshift(doc);store.set('p2p_demo',a);this.refresh();return{id:doc.id,key};
+  },
+  async req(p){const u=firebase.auth().currentUser;if(!u||!p.uid)throw new Error('x');
+    await fs.collection('connections').doc(p.id+'_'+u.uid).set({postId:p.id,from:u.uid,to:p.uid,fromName:String((store.get('p2p_me',{})).name||'यूज़र').slice(0,40),fromPhone:String(u.phoneNumber||'').slice(-10),label:T[p.type][3],status:'pending',at:Date.now()});},
+  answer(c,v){return fs.collection('connections').doc(c.id).update({status:v});},
+  async contact(id){
+    if(fs){const d=await fs.collection('contacts').doc(id).get();return d.exists?d.data().phone:null;}
+    const p=store.get('p2p_demo',[]).find(x=>x.id===id);return p?p.phone:null;
+  },
+  async report(id){
+    const done=store.get('p2p_rep',[]);if(done.includes(id))return;
+    if(fs){const u=firebase.auth().currentUser;if(!u)throw new Error('login');
+      const pr=fs.collection('posts').doc(id),b=fs.batch();
+      b.set(pr.collection('reports').doc(u.uid),{at:Date.now()}); /* हर वेरिफ़ाइड यूज़र की सिर्फ़ 1 रिपोर्ट गिनी जाती है */
+      b.update(pr,{reports:firebase.firestore.FieldValue.increment(1)});
+      await b.commit();}
+    else{const a=store.get('p2p_demo',[]),p=a.find(x=>x.id===id);if(p)p.reports=(p.reports||0)+1;store.set('p2p_demo',a);this.refresh();}
+    done.push(id);store.set('p2p_rep',done);
+  },
+  async close(id){
+    if(fs)await fs.collection('posts').doc(id).update({done:true});
+    else{store.set('p2p_demo',store.get('p2p_demo',[]).filter(x=>x.id!==id));this.refresh();}
+  }
+};
+function load(){DB.refresh();}
+DB.listen(arr=>{data=arr.filter(fresh);render();});
+setInterval(()=>{if(data.length)render();},60000); // drop expired posts
+$('#p2p-list-btn').onclick=()=>show('list');
+$('#p2p-listbox').onclick=e=>{if(e.target.closest('[data-post]')){hide('list');$('#p2p-add').click();return;}const r=e.target.closest('.lrow');if(!r)return;const mk=markers[r.dataset.id];if(!mk)return;hide('list');layers[mk._p.type].zoomToShowLayer(mk,()=>{map.setView(mk.getLatLng(),16);mk.openPopup();});};
+$('#p2p-q').oninput=renderList;
+
+/* add flow */
+const f=$('#p2p-form'),E=n=>f.elements[n],msg=$('#p2p-msg'),go=$('#p2p-go'),otpBox=$('#p2p-otp');
+let cur=null,token=null,tokPhone=null,tokUid=null,otpSent=false;
+const idle=()=>{go.textContent=otpSent?'वेरिफ़ाई करके पोस्ट करें':P2P.otp?'OTP भेजें':(lang==='en'?'Post':'पोस्ट करें');};idle();
+const PH={sale:['सामान का पता / मोहल्ला','क्या बेचना है? (जैसे: पुरानी साइकिल)'],need:['कहाँ से लेना है?','क्या भेजना है? (जैसे: 1 बैग)'],cycle:['आप कहाँ हैं?','क्या काम है? (जैसे: दूध लाना)'],wseek:['आप कहाँ रहते हैं / कहाँ काम कर सकते हैं?','आप क्या काम करते हैं? (जैसे: मिस्त्री, 5 साल का अनुभव)'],wgive:['काम कहाँ करना है?','कौन सा काम, कितने आदमी? (जैसे: 2 मज़दूर, 3 दिन)'],tempo:['कहाँ से?','क्या सामान लोड करना है?']};
+function pick(k){cur=k;const t=T[k];
+  $('#p2p-types-wrap').style.display='none';f.style.display='block';$('#p2p-ttl').textContent=t[1]+' '+t[0];
+  f.querySelectorAll('[data-t]').forEach(el=>{el.style.display=el.dataset.t.split(' ').includes(k)?'':'none';});
+  E('address').placeholder=(PH[k]||['कहाँ से? (मोहल्ला / जगह)'])[0];
+  E('details').placeholder=(PH[k]||[0,'कुछ और बताना हो (वैकल्पिक)'])[1];
+  E('details').required=['sale','need','cycle','wseek','wgive'].includes(k);
+  const jb=k==='wseek'||k==='wgive',en=lang==='en';
+  E('price').placeholder=jb?(en?'Wage / salary (e.g. ₹500/day)':'मज़दूरी / तनख्वाह (जैसे ₹500/दिन)'):(en?'Fare / price (e.g. ₹50 or ₹15/km)':'किराया / कीमत (जैसे ₹50 या ₹15/km)');
+  $('#p2p-pchips').innerHTML=(jb?['₹400/दिन','₹500/दिन','₹600/दिन','आपसी बात से']:['₹50','₹100','₹15/km','आपसी बात से']).map(x=>'<button type="button">'+x+'</button>').join('');
+  E('ttime').style.display=E('tday').value==='now'?'none':'';
+  const me=store.get('p2p_me',{});if(!E('name').value)E('name').value=me.name||'';if(!E('phone').value)E('phone').value=me.phone||'';
+}
+function backToTypes(){const l=store.get('p2p_last',null);$('#p2p-rep').hidden=!(l&&T[l.k]);if(l&&T[l.k])$('#p2p-rep').textContent='🔁 '+(lang==='en'?'Repeat last post: ':'पिछली पोस्ट दोहराएँ: ')+T[l.k][1]+' '+T[l.k][3];f.style.display='none';$('#p2p-types-wrap').style.display='block';msg.textContent='';}
+$('#p2p-types').onclick=e=>{const b=e.target.closest('.tbtn');if(b)pick(b.dataset.k);};
+$('#p2p-back').onclick=backToTypes;
+$('#p2p-pchips').onclick=e=>{const b=e.target.closest('button');if(b)E('price').value=b.textContent;};
+E('phone').oninput=()=>{if(otpSent){otpSent=false;otpBox.style.display='none';$('#p2p-resend').style.display='none';idle();}E('phone').value=E('phone').value.replace(/\D/g,'');E('phone').classList.toggle('bad',E('phone').value.length>0&&!/^[6-9]\d{0,9}$/.test(E('phone').value));};
+E('pincode').oninput=()=>{E('pincode').value=E('pincode').value.replace(/\D/g,'');};
+E('tday').onchange=()=>{E('ttime').style.display=E('tday').value==='now'?'none':'';};
+$('#p2p-add').onclick=()=>{backToTypes();show('add');};
+const to12=s=>{let[h,m]=s.split(':').map(Number);const a=h>=12?'PM':'AM';h=h%12||12;return h+':'+String(m).padStart(2,'0')+' '+a;};
+async function geocode(addr,pin){
+  const qs=[addr+' Gaya Bihar '+pin,addr+' Gaya Bihar'];
+  for(let i=0;i<qs.length;i++){
+    if(i)await new Promise(r=>setTimeout(r,1100)); /* Nominatim: अधिकतम 1 request/सेकंड */
+    try{const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&bounded=1&viewbox='+P2P.bounds[1]+','+P2P.bounds[2]+','+P2P.bounds[3]+','+P2P.bounds[0]+'&q='+encodeURIComponent(qs[i]));const j=await r.json();
+      if(j[0]){const ll=[+j[0].lat,+j[0].lon];if(inB(ll[0],ll[1]))return ll;}}catch(e){}}
+  return null;} /* नहीं मिला = null; शहर के बीच में चुपचाप पोस्ट नहीं लगेगी */
+function hlPin(){const b=f.querySelector('[name=address]').parentNode.querySelector('.mp');if(b){b.classList.add('hl');setTimeout(()=>b.classList.remove('hl'),6000);}}
+f.onsubmit=async e=>{e.preventDefault();if(!cur)return;msg.textContent='';
+  const d=Object.fromEntries(new FormData(f));d.type=cur;
+  d.daily=(['trip','auto','taxi','tour'].includes(cur)&&E('daily').checked)?1:0;
+  if(cur==='sale')d.time='अभी उपलब्ध';
+  else if(d.tday==='now')d.time='अभी';
+  else{if(!d.ttime){msg.textContent='कृपया समय चुनें';return;}d.time=(d.daily?'रोज़ ':(d.tday==='tomorrow'?'कल ':'आज '))+to12(d.ttime);}
+  d.sched=0;
+  if(cur!=='sale'&&d.tday&&d.tday!=='now'&&d.ttime){const[h,m]=d.ttime.split(':').map(Number),t=new Date();t.setHours(h,m,0,0);if(d.tday==='tomorrow')t.setDate(t.getDate()+1);
+    if(!d.daily&&t.getTime()<Date.now()-30*6e4){msg.textContent='यह समय बीत चुका है, आगे का समय चुनें';return;}
+    d.sched=t.getTime();}
+  go.disabled=true;go.textContent='भेज रहे हैं…';
+  try{
+    if(useFB&&firebase.auth().currentUser&&firebase.auth().currentUser.phoneNumber==='+91'+d.phone){token=firebase.auth().currentUser.uid;tokUid=token;tokPhone=d.phone;}
+    if(P2P.otp&&(!token||tokPhone!==d.phone)){
+      if(!otpSent){const r=await post('/otp/send',{phone:d.phone});otpSent=true;otpBox.style.display='block';$('#p2p-resend').style.display='block';
+        msg.textContent=r.demo_otp?('DEMO OTP: '+r.demo_otp):'OTP आपके नंबर पर भेजा गया';return;}
+      const v=await post('/otp/verify',{phone:d.phone,otp:d.otp});token=v.token;tokUid=v.uid||null;tokPhone=d.phone;}
+    msg.textContent='जगह ढूँढ रहे हैं…';
+    const ll=pk.address||await geocode(d.address,d.pincode);
+    if(!ll){otpSent=false;otpBox.style.display='none';$('#p2p-resend').style.display='none';
+      msg.textContent='"'+d.address+'" नक्शे पर नहीं मिला। 📍 दबाकर नक्शे पर सही जगह चुनें।';hlPin();return;}
+    const [lat,lng]=ll;
+    let tl='',tg='',noDest=false;
+    if(d.to_address&&['trip','need','auto','taxi','tempo','tour'].includes(cur)){if(!pk.to_address)await new Promise(r=>setTimeout(r,1100));const q=pk.to_address||await geocode(d.to_address,d.pincode);if(q){tl=q[0];tg=q[1];}else noDest=true;}
+    const res=await DB.add({...d,pv:token&&token!=='demo'?1:0,uid:tokUid,lat,lng,to_lat:tl,to_lng:tg});
+    if(res.key){const mine=store.get('p2p_mine',{});mine[res.id]=res.key;store.set('p2p_mine',mine);}
+    store.set('p2p_me',{name:d.name,phone:d.phone});store.set('p2p_last',{k:cur,d:{address:d.address,pincode:d.pincode,to_address:d.to_address||'',vehicle:d.vehicle||'',seats:d.seats||'0',details:d.details||'',price:d.price}});
+    f.reset();pk.address=pk.to_address=null;otpSent=false;otpBox.style.display='none';$('#p2p-resend').style.display='none';idle();msg.textContent='';hide('add');backToTypes();
+    await load();map.setView([lat,lng],15);toast(noDest?'✅ पोस्ट लग गई – मंज़िल नक्शे पर नहीं मिली, रास्ता नहीं दिखेगा':'✅ पोस्ट नक्शे पर लग गई');
+  }catch(err){msg.textContent=err.message;}finally{go.disabled=false;idle();}};
+/* voice + map pick */
+const pk={address:null,to_address:null};
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function listen(inp,btn){if(!SR){toast('बोलकर लिखने के लिए Chrome इस्तेमाल करें');return;}
+  const r=new SR();r.lang=lang==='en'?'en-IN':'hi-IN';btn.textContent='🔴';
+  r.onresult=e=>{inp.value=(inp.value?inp.value+' ':'')+e.results[0][0].transcript;if(pk[inp.name]!==undefined)pk[inp.name]=null;};
+  r.onend=()=>{btn.textContent='🎤';};r.onerror=()=>toast('सुन नहीं पाया, फिर बोलें');try{r.start();}catch(e){}}
+let pickH=null;
+function endPick(){if(pickH){map.off('click',pickH);pickH=null;}const b=$('#p2p-pickbar');if(b)b.remove();}
+function pickMap(n){hide('add');endPick();
+  const bar=document.createElement('div');bar.id='p2p-pickbar';bar.innerHTML='<span>📍 नक्शे पर जगह दबाएँ</span><button type="button">रद्द करें</button>';
+  $('#p2p').appendChild(bar);bar.querySelector('button').onclick=()=>{endPick();show('add');};
+  pickH=e=>{endPick();if(!B.contains(e.latlng)){toast('गया शहर के अंदर चुनें');}else{pk[n]=[e.latlng.lat,e.latlng.lng];if(!E(n).value)E(n).value='नक्शे से चुनी जगह';toast('✅ जगह चुन ली');}show('add');};
+  map.on('click',pickH);}
+['address','to_address','details'].forEach(n=>{const i=E(n),w=document.createElement('div');w.className='pw'+(n==='details'?'':' two');i.before(w);w.append(i);
+  const m=document.createElement('button');m.type='button';m.className='mic';m.textContent='🎤';m.setAttribute('aria-label','बोलकर लिखें');m.onclick=()=>listen(i,m);w.append(m);
+  if(n!=='details'){const q=document.createElement('button');q.type='button';q.className='mic mp';q.textContent='📍';q.setAttribute('aria-label','नक्शे पर चुनें');q.onclick=()=>pickMap(n);w.append(q);i.addEventListener('input',()=>{pk[n]=null;});}});
+$('#p2p-rep').onclick=()=>{const l=store.get('p2p_last',null);if(!l||!T[l.k])return;pick(l.k);Object.entries(l.d).forEach(([n,v])=>{if(E(n))E(n).value=v;});};
+$('#p2p-vf').onclick=()=>{onlyV=!onlyV;$('#p2p-vf').style.background=onlyV?'#bbf7d0':'';renderList();};
+$('#p2p-resend').onclick=()=>{otpSent=false;E('otp').value='';f.requestSubmit();};
+/* SOS */
+$('#p2p-sosl').innerHTML=[['🚓 पुलिस','112'],['🚑 एम्बुलेंस','108'],['🏥 स्वास्थ्य सहायता','102'],['🔥 दमकल','101'],['👩 महिला हेल्पलाइन','181'],['👶 चाइल्डलाइन','1098']].map(x=>'<a href="tel:'+x[1]+'"><span>'+x[0]+'</span><span>📞 '+x[1]+'</span></a>').join('');
+$('#p2p-sos').onclick=()=>show('sos');
+/* Hindi / English */
+const HI=JSON.parse(JSON.stringify(T));
+const EN={trip:['I am travelling (can carry goods/riders)','On my way'],need:['Send goods / need a ride','Need ride/goods'],auto:['Auto booking','Auto'],taxi:['Taxi / car booking','Taxi/Car'],tempo:['Tempo / goods transport','Tempo'],cycle:['Small errand by cycle (₹5-10)','Cycle errand'],sale:['I want to sell something','For sale'],tour:['Pilgrim / sightseeing trips (Bodh Gaya, Vishnupad)','Pilgrim tours'],wseek:['I need work (labour / mason / skill)','Need work'],wgive:['I want to hire (workers needed)','Hiring']};
+const UI=[['#p2p-add','➕ पोस्ट करें','➕ Post'],['#p2p-list-btn','📋 सूची','📋 List'],['#p2p-s-list h3','📋 आसपास की पोस्ट','📋 Nearby posts'],['#p2p-q','🔍 खोजें: जगह, नाम, सामान…','🔍 Search place, name, item…'],['#p2p-types-wrap h3','आप क्या करना चाहते हैं? 👇','What do you want to do? 👇'],['#p2p-back','← वापस','← Back'],['#p2p-s-sos h3','🆘 आपातकालीन नंबर','🆘 Emergency numbers'],['[name=name]','आपका नाम','Your name'],['[name=phone]','मोबाइल नंबर (10 अंक)','Mobile number (10 digits)'],['[name=pincode]','पिन कोड (जैसे 823001)','PIN code (e.g. 823001)'],['[name=price]','किराया / कीमत (जैसे ₹50 या ₹15/km)','Fare / price (e.g. ₹50 or ₹15/km)']];
+function applyLang(){const en=lang==='en';
+  Object.keys(T).forEach(k=>{const src=en&&EN[k]?EN[k]:[HI[k][0],HI[k][3]];T[k][0]=src[0];T[k][3]=src[1];
+    if(legB[k])legB[k].dataset.l=T[k][1]+' '+T[k][3];const tb=document.querySelector('.tbtn[data-k="'+k+'"]');if(tb)tb.lastChild.textContent=T[k][0];});
+  UI.forEach(([sel,hi,e])=>{const el=$(sel);if(!el)return;if(el.tagName==='INPUT')el.placeholder=en?e:hi;else el.textContent=en?e:hi;});
+  window.heatB.textContent=en?'🔥 Demand':'🔥 माँग';$('#p2p-lang').textContent=en?'हिं':'EN';idle();backToTypes();render();}
+$('#p2p-lang').onclick=()=>{lang=lang==='en'?'hi':'en';store.set('p2p_lang',lang);applyLang();};
+if(lang==='en')applyLang();
+/* ---------- Membership ---------- */
+async function getPh(p){const ph=String(await DB.contact(p.id)||'').replace(/\D/g,'').slice(-10);if(!/^[6-9]\d{9}$/.test(ph))throw new Error('x');return ph;}
+async function syncMember(){const u=useFB&&firebase.auth().currentUser;if(!u)return;
+  try{const d=await fs.collection('members').doc(u.uid).get(),v=d.exists?d.data().expiresAt:0;store.set('p2p_member',{exp:v&&v.toMillis?v.toMillis():+v||0});}catch(e){}
+  render();window.renderPlan();}
+window.renderPlan=function(){const m=MB.ok(),nl=useFB&&!firebase.auth().currentUser;
+  $('#p2p-mem').textContent=m?'⭐':'🔓';
+  $('#p2p-mst').innerHTML=m?'<div class="mst">✅ आप मेंबर हैं – '+MB.left()+' बाकी</div>':'';
+  $('#pl-login').style.display=nl?'block':'none';$('#p2p-plans').style.display=nl?'none':'grid';
+  $('#p2p-plans').innerHTML=PLANS.map(x=>'<button type="button" class="plan'+(x.best?' best':'')+'" data-p="'+x.id+'"><span><b>'+x.t+'</b><small>'+x.s+'</small></span><span class="rs">₹'+x.p+'</span></button>').join('');};
+let plSent=false;
+$('#pl-go').onclick=async()=>{const ph=$('#pl-ph').value.replace(/\D/g,''),b=$('#pl-go');
+  if(!/^[6-9]\d{9}$/.test(ph)){toast('सही 10 अंक का नंबर डालें');return;}
+  b.disabled=true;
+  try{if(!plSent){await post('/otp/send',{phone:ph});plSent=true;$('#pl-otp').style.display='block';b.textContent='वेरिफ़ाई करें';toast('OTP भेजा गया');}
+    else{await post('/otp/verify',{phone:ph,otp:$('#pl-otp').value});plSent=false;b.textContent='OTP भेजें';$('#pl-otp').style.display='none';await syncMember();window.renderPlan();}}
+  catch(e){toast(e.message);}finally{b.disabled=false;}};
+$('#p2p-plans').onclick=async e=>{const b=e.target.closest('.plan');if(!b)return;const pl=PLANS.find(x=>x.id===b.dataset.p),pay=P2P.pay||{};
+  if(!pay.orderUrl){ /* DEMO: असली भुगतान नहीं */
+    if(useFB){toast('भुगतान अभी चालू नहीं है, बाद में कोशिश करें');return;} /* असली Firebase के साथ मुफ़्त मेंबरशिप नहीं */
+    if(!confirm('डेमो मोड: असली भुगतान नहीं होगा। '+pl.t+' की मेंबरशिप चालू करें?'))return;
+    const m=MB.get(),base=m&&m.exp>Date.now()?m.exp:Date.now();store.set('p2p_member',{exp:base+pl.d*864e5});
+    map.closePopup();render();window.renderPlan();toast('✅ मेंबरशिप चालू (डेमो)');return;}
+  try{const o=await fetch(pay.orderUrl,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+await firebase.auth().currentUser.getIdToken()},body:JSON.stringify({plan:pl.id})}).then(r=>r.json());
+    if(!o.order_id)throw new Error('order');
+    await new Promise((ok,no)=>{if(window.Razorpay)return ok();const sc=document.createElement('script');sc.src='https://checkout.razorpay.com/v1/checkout.js';sc.onload=ok;sc.onerror=no;document.head.appendChild(sc);});
+    new Razorpay({key:o.key_id,order_id:o.order_id,amount:o.amount,currency:'INR',name:'गया लोकल',description:pl.t+' मेंबरशिप',theme:{color:'#14213d'},
+      handler:async()=>{toast('भुगतान मिला, मेंबरशिप चालू हो रही है…');for(let i=0;i<8&&!MB.ok();i++){await new Promise(r=>setTimeout(r,2000));await syncMember();}map.closePopup();if(MB.ok())toast('✅ मेंबरशिप चालू हो गई');else toast('भुगतान की पुष्टि में देर है, थोड़ी देर बाद देखें');}}).open();
+  }catch(err){toast('भुगतान शुरू नहीं हो पाया, फिर कोशिश करें');}};
+$('#p2p-mem').onclick=()=>show('plan');
+if(useFB)firebase.auth().onAuthStateChanged(u=>{watchConns(u);if(u)syncMember();else{store.set('p2p_member',null);render();}});
+window.renderPlan();
+/* ---- संपर्क अनुरोध (Rapido जैसा: मंज़ूरी के बाद ही नंबर) ---- */
+let unsub=[];const rowH=(c,mine)=>{const w=mine?'आपने भेजा':esc(c.fromName)+' ने माँगा',st=c.status;
+  const act=mine?(st==='accepted'?'<button data-k="out" data-id="'+c.id+'" data-post="'+esc(c.postId)+'">📞 कॉल</button><button data-k="adr" data-post="'+esc(c.postId)+'">📍 पता</button>':st==='pending'?'⏳ जवाब का इंतज़ार':'❌ मंज़ूर नहीं'):
+    (st==='pending'?'<button data-k="ok" data-id="'+c.id+'">✅ मंज़ूर</button><button data-k="no" data-id="'+c.id+'">❌ मना करें</button>':st==='accepted'?'<a href="tel:+91'+esc(c.fromPhone)+'" style="color:#2563eb;font-weight:700">📞 '+esc(c.fromPhone)+'</a>':'❌ मना किया');
+  return '<div class="lrow" style="flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:160px"><b>'+esc(c.label||'')+'</b><br><small>'+w+' · '+ago(c.at)+'</small></div><div style="display:flex;gap:6px;align-items:center">'+act+'</div></div>';};
+function inboxRender(){const n=inc.filter(c=>c.status==='pending').length;$('#p2p-inb-n').textContent=n?' '+n:'';
+  const all=[...inc.map(c=>rowH(c,0)),...out.map(c=>rowH(c,1))];$('#p2p-inbox').innerHTML=all.length?all.join(''):'<div class="empty">अभी कोई अनुरोध नहीं</div>';}
+function watchConns(u){unsub.forEach(f=>f());unsub=[];inc.length=out.length=0;Object.keys(CN).forEach(k=>delete CN[k]);
+  if(!u){inboxRender();render();return;}const C=fs.collection('connections'),mk=s=>s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.at-a.at);
+  unsub.push(C.where('to','==',u.uid).onSnapshot(s=>{inc.splice(0,inc.length,...mk(s));inboxRender();},console.error));
+  unsub.push(C.where('from','==',u.uid).onSnapshot(s=>{out.splice(0,out.length,...mk(s));out.forEach(c=>CN[c.postId]=c.status);inboxRender();render();},console.error));}
+if(!useFB)$('#p2p-inb').style.display='none';
+$('#p2p-inb').onclick=()=>{if(!firebase.auth().currentUser){toast('पहले नंबर वेरिफ़ाई करें');show('plan');return;}show('inbox');};
+$('#p2p-inb-x').onclick=()=>hide('inbox');
+$('#p2p-inbox').onclick=async e=>{const b=e.target.closest('button[data-k]');if(!b)return;const k=b.dataset.k;
+  try{if(k==='ok'||k==='no')await DB.answer({id:b.dataset.id},k==='ok'?'accepted':'declined');
+    else{const d=await fs.collection('contacts').doc(b.dataset.post).get();if(!d.exists)throw 0;const v=d.data();
+      if(k==='out')location.href='tel:+91'+String(v.phone).slice(-10);else alert('📍 '+v.address+(v.to_address?'\n➡️ '+v.to_address:''));}}
+  catch(x){toast('अभी नहीं हो पाया, फिर कोशिश करें');}};
+})();
+</script>
+</body>
+</html>
